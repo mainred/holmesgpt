@@ -2,7 +2,7 @@ import json
 import os
 import subprocess
 import sys
-
+import pydantic_core
 # For relative imports to work in Python 3.6 - see https://stackoverflow.com/a/49375740
 this_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(this_path)

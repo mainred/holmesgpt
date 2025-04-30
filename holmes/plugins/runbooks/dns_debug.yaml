@@ -1,0 +1,16 @@
+runbooks:
+  - match:
+      issue_name: "dns resolution failure"
+    instructions: >
+      I'm experiencing DNS resolution issues inside my Kubernetes cluster. Please help me debug it by walking through the following:
+      1. Verify which DNS service is running (CoreDNS or kube-dns) and confirm it's healthy.
+      2. Check if the kube-dns or coredns pods are running in the kube-system namespace.
+      3. Confirm if a NetworkPolicy or firewall is blocking egress to port 53.
+      4. Validate that the DNS Service IP is reachable from within a dnsutil pod.
+      5. Create a dnsutil debug pod to run the following commands:
+         5.1 Resolve internal services (e.g., kubernetes.default.svc.cluster.local)
+         5.2 Perform nslookup, dig, or ping on known domains.
+      6. Check if the pod has the correct DNS config in /etc/resolv.conf.
+      7. Show logs from the coredns pods to identify query failures or errors.
+      8. Validate that the cluster DNS configuration (kubelet, CoreDNS ConfigMap) is correct.
+      9. Suggest tools or YAML manifests to automate DNS debugging inside the cluster.
