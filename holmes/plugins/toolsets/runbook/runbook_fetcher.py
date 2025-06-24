@@ -76,3 +76,6 @@ class RunbookToolset(Toolset):
 
     def get_example_config(self) -> Dict[str, Any]:
         return {}
+
+    def init_config(self):
+        pass
