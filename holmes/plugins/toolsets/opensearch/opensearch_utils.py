@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict, List, Literal, Optional, Tuple, cast
+from typing import Any, Dict, List, Literal, Optional, Tuple
 from urllib.parse import urljoin
 
 import requests  # type: ignore
@@ -21,6 +21,8 @@ class OpenSearchIndexConfig(BaseModel):
 
 
 class BaseOpenSearchToolset(Toolset):
+    typed_config: Optional[OpenSearchIndexConfig] = None
+
     def get_example_config(self) -> Dict[str, Any]:
         example_config = OpenSearchIndexConfig(
             opensearch_url="YOUR OPENSEARCH LOGS URL",
@@ -29,33 +31,18 @@ class BaseOpenSearchToolset(Toolset):
         )
         return example_config.model_dump()
 
-    def prerequisites_callable(self) -> Tuple[bool, str]:
+    def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
         env_url = os.environ.get("OPENSEARCH_LOGS_URL", None)
-        env_index_pattern = os.environ.get("OPENSEARCH_LOGS_INDEX_NAME", "*")
-        if not self.config and not env_url:
+        if not config and not env_url:
             return False, "Missing opensearch traces URL. Check your config"
-        elif not self.config and env_url:
-            self.config = OpenSearchIndexConfig(
-                opensearch_url=env_url,
-                index_pattern=env_index_pattern,
-                opensearch_auth_header=os.environ.get(
-                    "OPENSEARCH_LOGS_AUTH_HEADER", None
-                ),
-            )
-            return opensearch_health_check(self.config)
-        else:
-            self.config = OpenSearchIndexConfig(**self.config)  # type: ignore
-            return opensearch_health_check(self.config)
+        self.init_config(config)
+        return opensearch_health_check(self.typed_config)  # type: ignore
 
-    @property
-    def opensearch_config(self) -> OpenSearchIndexConfig:
-        return cast(OpenSearchIndexConfig, self.config)
-
-    def init_config(self):
+    def init_config(self, config: dict[str, Any]):
         env_url = os.environ.get("OPENSEARCH_LOGS_URL", None)
         env_index_pattern = os.environ.get("OPENSEARCH_LOGS_INDEX_NAME", "*")
-        if not self.config and env_url:
-            self.config = OpenSearchIndexConfig(
+        if not config and env_url:
+            self.typed_config = OpenSearchIndexConfig(
                 opensearch_url=env_url,
                 index_pattern=env_index_pattern,
                 opensearch_auth_header=os.environ.get(
@@ -63,7 +50,7 @@ class BaseOpenSearchToolset(Toolset):
                 ),
             )
         else:
-            self.config = OpenSearchIndexConfig(**self.config)
+            self.typed_config = OpenSearchIndexConfig(**config)
 
 
 def add_auth_header(auth_header: Optional[str]) -> Dict[str, Any]:

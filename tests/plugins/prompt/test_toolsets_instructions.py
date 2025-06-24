@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any, Dict
 
 from holmes.core.tools import (
     StaticPrerequisite,
@@ -38,7 +38,7 @@ class MockToolset(Toolset):
     def get_example_config(self):
         return {}
 
-    def init_config(self):
+    def init_config(self, config: dict[str, Any]):
         pass
 
 

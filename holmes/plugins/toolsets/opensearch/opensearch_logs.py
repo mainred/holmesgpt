@@ -36,15 +36,15 @@ class GetLogFields(Tool):
         self._cache = None
 
     def _invoke(self, params: Dict) -> StructuredToolResult:
-        if not self._toolset.opensearch_config:
+        if not self._toolset.typed_config:
             return StructuredToolResult(
                 status=ToolResultStatus.ERROR,
                 params=params,
             )
         try:
-            if not self._cache and self._toolset.opensearch_config.fields_ttl_seconds:
+            if not self._cache and self._toolset.typed_config.fields_ttl_seconds:
                 self._cache = TTLCache(
-                    maxsize=5, ttl=self._toolset.opensearch_config.fields_ttl_seconds
+                    maxsize=5, ttl=self._toolset.typed_config.fields_ttl_seconds
                 )
             if self._cache:
                 cached_response = self._cache.get(LOGS_FIELDS_CACHE_KEY, None)
@@ -58,11 +58,11 @@ class GetLogFields(Tool):
 
             headers = {"Content-Type": "application/json"}
             headers.update(
-                add_auth_header(self._toolset.opensearch_config.opensearch_auth_header)
+                add_auth_header(self._toolset.typed_config.opensearch_auth_header)
             )
 
             # Use script-based field discovery if configured, otherwise use getMappings API
-            if self._toolset.opensearch_config.use_script_for_fields_discovery:
+            if self._toolset.typed_config.use_script_for_fields_discovery:
                 return self._get_fields_using_script(headers, params)
             else:
                 return self._get_fields_using_mappings(headers, params)
@@ -106,8 +106,8 @@ class GetLogFields(Tool):
         }
 
         url = urljoin(
-            self._toolset.opensearch_config.opensearch_url,
-            f"/{self._toolset.opensearch_config.index_pattern}/_search",
+            self._toolset.typed_config.opensearch_url,  # type: ignore
+            f"/{self._toolset.typed_config.index_pattern}/_search",  # type: ignore
         )
         logs_response = requests.get(
             url=url,
@@ -140,8 +140,8 @@ class GetLogFields(Tool):
     ) -> StructuredToolResult:
         """Use the OpenSearch getMappings API to retrieve fields (new implementation)"""
         url = urljoin(
-            self._toolset.opensearch_config.opensearch_url,
-            f"/{self._toolset.opensearch_config.index_pattern}/_mapping",
+            self._toolset.typed_config.opensearch_url,  # type: ignore
+            f"/{self._toolset.typed_config.index_pattern}/_mapping",  # type: ignore
         )
 
         mapping_response = requests.get(
@@ -254,7 +254,7 @@ class LogsSearchQuery(Tool):
         self._cache = None
 
     def _invoke(self, params: Any) -> StructuredToolResult:
-        if not self._toolset.opensearch_config:
+        if not self._toolset.typed_config:
             return StructuredToolResult(
                 status=ToolResultStatus.ERROR,
                 params=params,
@@ -269,11 +269,11 @@ class LogsSearchQuery(Tool):
             logging.debug(f"opensearch logs search query: {full_query}")
             headers = {"Content-Type": "application/json"}
             headers.update(
-                add_auth_header(self._toolset.opensearch_config.opensearch_auth_header)
+                add_auth_header(self._toolset.typed_config.opensearch_auth_header)
             )
             url = urljoin(
-                self._toolset.opensearch_config.opensearch_url,
-                f"/{self._toolset.opensearch_config.index_pattern}/_search",
+                self._toolset.typed_config.opensearch_url,
+                f"/{self._toolset.typed_config.index_pattern}/_search",
             )
             logs_response = requests.get(
                 url=url,

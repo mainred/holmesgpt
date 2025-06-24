@@ -31,7 +31,7 @@ from holmes.plugins.toolsets.utils import standard_start_datetime_tool_param_des
 
 
 class BaseCoralogixToolset(Toolset):
-    config: Optional[CoralogixConfig] = None
+    typed_config: Optional[CoralogixConfig] = None
 
     def get_example_config(self):
         example_config = CoralogixConfig(
@@ -87,7 +87,7 @@ class FetchLogs(BaseCoralogixTool):
         )
 
     def _invoke(self, params: Any) -> StructuredToolResult:
-        if not self.toolset.config:
+        if not self.toolset.typed_config:
             return StructuredToolResult(
                 status=ToolResultStatus.ERROR,
                 error="The coralogix/logs toolset is not configured",
@@ -95,12 +95,19 @@ class FetchLogs(BaseCoralogixTool):
                 params=params,
             )
 
-        logs_data = query_logs_for_all_tiers(config=self.toolset.config, params=params)
-        (start, end) = get_start_end(config=self.toolset.config, params=params)
-        query_string = build_query_string(config=self.toolset.config, params=params)
+        logs_data = query_logs_for_all_tiers(
+            config=self.toolset.typed_config, params=params
+        )
+        (start, end) = get_start_end(config=self.toolset.typed_config, params=params)
+        query_string = build_query_string(
+            config=self.toolset.typed_config, params=params
+        )
 
         url = build_coralogix_link_to_logs(
-            config=self.toolset.config, lucene_query=query_string, start=start, end=end
+            config=self.toolset.typed_config,
+            lucene_query=query_string,
+            start=start,
+            end=end,
         )
 
         data: str
@@ -123,9 +130,9 @@ class FetchLogs(BaseCoralogixTool):
         )
 
     def get_parameterized_one_liner(self, params) -> str:
-        if not self.toolset.config:
+        if not self.toolset.typed_config:
             return "The coralogix/logs toolset is not configured"
-        query_string = build_query_string(self.toolset.config, params)
+        query_string = build_query_string(self.toolset.typed_config, params)
         return f"fetching coralogix logs. query={query_string}"
 
 
@@ -143,17 +150,22 @@ class CoralogixLogsToolset(BaseCoralogixToolset):
             tags=[ToolsetTag.CORE],
         )
 
-    def prerequisites_callable(self) -> Tuple[bool, str]:
-        if not self.config:
+    def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
+        if not config:
             return False, TOOLSET_CONFIG_MISSING_ERROR
-        self.init_config()
-        if self.config.api_key:
-            return health_check(domain=self.config.domain, api_key=self.config.api_key)
-        else:
-            return False, "Missing configuration field 'api_key'"
+        try:
+            self.init_config(config)
 
-    def init_config(self):
-        if not self.config:
-            logging.error("The coralogix/logs toolset is not configured")
-            return
-        self.config = CoralogixConfig(**self.config)
+            if self.typed_config.api_key:  # type: ignore
+                return health_check(
+                    domain=self.typed_config.domain,  # type: ignore
+                    api_key=self.typed_config.api_key,  # type: ignore
+                )
+            else:
+                return False, "Missing configuration field 'api_key'"
+        except Exception as e:
+            logging.exception("Failed to set up Coralogix toolset")
+            return False, str(e)
+
+    def init_config(self, config: dict[str, Any]):
+        self.typed_config = CoralogixConfig(**config)

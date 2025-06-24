@@ -243,7 +243,7 @@ class ToolsetManager:
                 toolset.path = cached_status.get("path", None)
             # Initialize the config for enabled toolsets
             if toolset.enabled and toolset.status == ToolsetStatusEnum.ENABLED:
-                toolset.init_config()
+                toolset.init_config(toolset.config)  # type: ignore
 
         # CLI custom toolsets status are not cached, and their prerequisites are always checked whenever the CLI runs.
         custom_toolsets_from_cli = self._load_toolsets_from_paths(

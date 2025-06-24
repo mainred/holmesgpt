@@ -31,12 +31,12 @@ class BaseRabbitMQTool(Tool):
     toolset: "RabbitMQToolset"
 
     def _get_cluster_config(self, cluster_id: Optional[str]) -> RabbitMQClusterConfig:
-        if not self.toolset.config:
+        if not self.toolset.typed_config:
             raise ValueError("RabbitMQ is not configured.")
-        cluster_ids = [c.id for c in self.toolset.config.clusters]
+        cluster_ids = [c.id for c in self.toolset.typed_config.clusters]
         if not cluster_id and len(cluster_ids) == 1:
             # cluster id is optional if there is only one configured
-            return self.toolset.config.clusters[0]
+            return self.toolset.typed_config.clusters[0]
         elif not cluster_id and len(cluster_ids) > 0:
             raise ValueError(
                 f"No cluster is configured. Possible cluster_id values are: {', '.join(cluster_ids)}"
@@ -44,7 +44,7 @@ class BaseRabbitMQTool(Tool):
         elif not cluster_id:
             raise ValueError("No cluster is configured")
 
-        for cluster in self.toolset.config.clusters:
+        for cluster in self.toolset.typed_config.clusters:
             if cluster.id == cluster_id:
                 return cluster
 
@@ -63,7 +63,7 @@ class ListConfiguredClusters(BaseRabbitMQTool):
         )
 
     def _invoke(self, params: Any) -> StructuredToolResult:
-        if not self.toolset.config:
+        if not self.toolset.typed_config:
             raise ValueError("RabbitMQ is not configured.")
 
         available_clusters = [
@@ -72,7 +72,7 @@ class ListConfiguredClusters(BaseRabbitMQTool):
                 "management_url": c.management_url,
                 "connection_status": c.connection_status,
             }
-            for c in self.toolset.config.clusters
+            for c in self.toolset.typed_config.clusters
             if c.connection_status == ClusterConnectionStatus.SUCCESS
         ]
         return StructuredToolResult(
@@ -120,6 +120,8 @@ class GetRabbitMQClusterStatus(BaseRabbitMQTool):
 
 
 class RabbitMQToolset(Toolset):
+    typed_config: Optional[RabbitMQConfig] = None
+
     def __init__(self):
         super().__init__(
             name="rabbitmq/core",
@@ -142,36 +144,22 @@ class RabbitMQToolset(Toolset):
         )
         self._load_llm_instructions(jinja_template=f"file://{template_file_path}")
 
-    def prerequisites_callable(self) -> Tuple[bool, str]:
-        config = self.config
+    def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
         if not config or not config.get("clusters"):
             # Attempt to load from environment variables as fallback
             env_url = os.environ.get("RABBITMQ_MANAGEMENT_URL")
-            env_user = os.environ.get("RABBITMQ_USERNAME", "guest")
-            env_pass = os.environ.get("RABBITMQ_PASSWORD", "guest")
             if not env_url:
                 return (
                     False,
                     "RabbitMQ toolset is misconfigured. 'management_url' is required.",
                 )
-            config = {
-                "clusters": [
-                    {
-                        "id": "rabbitmq",
-                        "management_url": env_url,
-                        "username": env_user,
-                        "password": env_pass,
-                    }
-                ]
-            }
-            logging.info("Loaded RabbitMQ config from environment variables.")
 
         try:
-            self.config = RabbitMQConfig(**config)
+            self.init_config(config)
         except Exception as e:
             return (False, f"Failed to parse RabbitMQ configuration: {str(e)}")
 
-        return self._check_clusters_config(self.config)
+        return self._check_clusters_config(self.typed_config)  # type: ignore
 
     def _check_clusters_config(self, config: RabbitMQConfig) -> Tuple[bool, str]:
         errors = []
@@ -222,8 +210,7 @@ class RabbitMQToolset(Toolset):
         )
         return example_config.model_dump()
 
-    def init_config(self):
-        config = self.config
+    def init_config(self, config: dict[str, Any]):
         if not config or not config.get("clusters"):
             # Attempt to load from environment variables as fallback
             env_url = os.environ.get("RABBITMQ_MANAGEMENT_URL")
@@ -239,5 +226,6 @@ class RabbitMQToolset(Toolset):
                     }
                 ]
             }
+            logging.info("Loaded RabbitMQ config from environment variables.")
 
-        self.config = RabbitMQConfig(**config)
+        self.typed_config = RabbitMQConfig(**config)

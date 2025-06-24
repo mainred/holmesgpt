@@ -244,8 +244,8 @@ class InternetBaseToolset(Toolset):
             docs_url=docs_url,
         )
 
-    def prerequisites_callable(self) -> Tuple[bool, str]:
-        self.init_config()
+    def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
+        self.init_config(config)
         return True, ""
 
     def get_example_config(self) -> Dict[str, Any]:
@@ -253,9 +253,9 @@ class InternetBaseToolset(Toolset):
             "additional_headers": {"Authorization": "Basic <base_64_encoded_string>"}
         }
 
-    def init_config(self):
-        if self.config:
-            self.additional_headers = self.config.get("additional_headers", {})
+    def init_config(self, config: dict[str, Any]):
+        if config:
+            self.additional_headers = config.get("additional_headers", {})
 
 
 class InternetToolset(InternetBaseToolset):

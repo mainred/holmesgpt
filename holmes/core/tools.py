@@ -5,6 +5,7 @@ import re
 import shlex
 import subprocess
 import tempfile
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
@@ -14,11 +15,10 @@ import sentry_sdk
 from jinja2 import Template
 from pydantic import BaseModel, ConfigDict, Field, FilePath, model_validator
 from rich.console import Console
+from rich.table import Table
 
 from holmes.core.openai_formatting import format_tool_to_open_ai_standard
 from holmes.plugins.prompts import load_and_render_prompt
-import time
-from rich.table import Table
 
 
 class ToolResultStatus(str, Enum):
@@ -299,7 +299,7 @@ class StaticPrerequisite(BaseModel):
 
 
 class CallablePrerequisite(BaseModel):
-    callable: Callable[[], Tuple[bool, str]]
+    callable: Callable[[dict[str, Any]], Tuple[bool, str]]
 
 
 class ToolsetCommandPrerequisite(BaseModel):
@@ -334,7 +334,8 @@ class Toolset(BaseModel):
     tags: List[ToolsetTag] = Field(
         default_factory=lambda: [ToolsetTag.CORE],
     )
-    config: Optional[Any] = None
+    # config indicates the configuration of the toolset from the user.
+    config: Optional[dict[str, Any]] = None
     is_default: bool = False
     llm_instructions: Optional[str] = None
 
@@ -425,7 +426,7 @@ class Toolset(BaseModel):
 
             elif isinstance(prereq, CallablePrerequisite):
                 try:
-                    (enabled, error_message) = prereq.callable()
+                    (enabled, error_message) = prereq.callable(self.config)
                     if not enabled:
                         self.status = ToolsetStatusEnum.FAILED
                     if error_message:
@@ -449,7 +450,7 @@ class Toolset(BaseModel):
         return {}
 
     @abstractmethod
-    def init_config(self):
+    def init_config(self, config: dict[str, Any]):
         """
         Initialize the toolset configuration.
         CallablePrerequisite can be used to initialize the configuration of a toolset, and validate the configuration prerequisites,
@@ -476,7 +477,7 @@ class YAMLToolset(Toolset):
     def get_example_config(self) -> Dict[str, Any]:
         return {}
 
-    def init_config(self):
+    def init_config(self, config: dict[str, Any]):
         pass
 
 

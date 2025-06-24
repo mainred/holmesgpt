@@ -48,7 +48,7 @@ def test_mcpserver_unreachable():
     assert (
         False,
         "Failed to load mcp server test_mcp http://0.0.0.0:3009/sse ('unhandled errors in a TaskGroup', [ConnectError('All connection attempts failed')])",
-    ) == mcp_toolset.init_server_tools()
+    ) == mcp_toolset.init_server_tools(None)
 
 
 def test_mcpserver_tool(monkeypatch):
@@ -75,7 +75,7 @@ def test_mcpserver_tool(monkeypatch):
         )
 
     monkeypatch.setattr(mcp_toolset, "_get_server_tools", mock_get_server_tools)
-    mcp_toolset.init_server_tools()
+    mcp_toolset.init_server_tools(None)
     assert len(list(mcp_toolset.tools)) == 1
 
 

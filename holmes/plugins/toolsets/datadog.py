@@ -13,6 +13,7 @@ from holmes.core.tools import (
     Toolset,
     ToolsetTag,
 )
+from holmes.plugins.toolsets.consts import TOOLSET_CONFIG_MISSING_ERROR
 
 
 class BaseDatadogTool(Tool):
@@ -136,12 +137,12 @@ class DatadogToolset(Toolset):
             tags=[ToolsetTag.CORE],
         )
 
-    def prerequisites_callable(self) -> Tuple[bool, str]:
-        if not self.config:
-            return False, ""
+    def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
+        if not config:
+            return False, TOOLSET_CONFIG_MISSING_ERROR
 
         try:
-            self.init_config()
+            self.init_config(config)
             return bool(self.dd_api_key and self.dd_app_key), ""
         except Exception:
             logging.exception("Failed to set up Datadog toolset")
@@ -150,7 +151,7 @@ class DatadogToolset(Toolset):
     def get_example_config(self) -> Dict[str, Any]:
         return {}
 
-    def init_config(self):
-        dd_config = DatadogConfig(**self.config)
+    def init_config(self, config: dict[str, Any]):
+        dd_config = DatadogConfig(**config)
         self.dd_api_key = dd_config.dd_api_key
         self.dd_app_key = dd_config.dd_app_key

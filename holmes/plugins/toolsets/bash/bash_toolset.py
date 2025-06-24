@@ -4,7 +4,7 @@ import os
 import random
 import re
 import string
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from holmes.core.tools import (
     CallablePrerequisite,
@@ -24,7 +24,7 @@ from holmes.plugins.toolsets.utils import get_param_or_raise
 
 
 class BaseBashExecutorToolset(Toolset):
-    config: Optional[BashExecutorConfig] = None
+    typed_config: Optional[BashExecutorConfig] = None
 
     def get_example_config(self):
         example_config = BashExecutorConfig()
@@ -92,7 +92,7 @@ class KubectlRunImageCommand(BaseBashTool):
             )
 
         validate_image_and_commands(
-            image=image, container_command=command_str, config=self.toolset.config
+            image=image, container_command=command_str, config=self.toolset.typed_config
         )
 
         pod_name = (
@@ -154,7 +154,7 @@ class RunBashCommand(BaseBashTool):
                 params=params,
             )
         try:
-            safe_command_str = make_command_safe(command_str, self.toolset.config)
+            safe_command_str = make_command_safe(command_str, self.toolset.typed_config)
             return execute_bash_command(
                 cmd=safe_command_str, timeout=timeout, params=params
             )
@@ -199,12 +199,16 @@ class BashExecutorToolset(BaseBashExecutorToolset):
         )
         self._load_llm_instructions(jinja_template=f"file://{template_file_path}")
 
-    def prerequisites_callable(self) -> tuple[bool, str]:
-        self.init_config()
+    def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
+        try:
+            self.init_config(config)
+        except Exception as e:
+            logging.exception("Failed to initialize BashExecutorToolset configuration")
+            return False, str(e)
         return True, ""
 
-    def init_config(self):
-        if self.config:
-            self.config = BashExecutorConfig(**self.config)
+    def init_config(self, config: dict[str, Any]):
+        if config:
+            self.typed_config = BashExecutorConfig(**config)
         else:
-            self.config = BashExecutorConfig()
+            self.typed_config = BashExecutorConfig()

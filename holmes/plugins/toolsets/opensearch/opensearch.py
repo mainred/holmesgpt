@@ -207,26 +207,13 @@ class OpenSearchToolset(Toolset):
             ],
         )
 
-    def prerequisites_callable(self) -> Tuple[bool, str]:
-        if not self.config:
+    def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
+        if not config:
             return False, TOOLSET_CONFIG_MISSING_ERROR
 
         try:
-            os_config = OpenSearchConfig(**self.config)
-            errors = []
-            for cluster in os_config.opensearch_clusters:
-                try:
-                    logging.info("Setting up OpenSearch client")
-                    cluster_kwargs = cluster.model_dump()
-                    client = OpenSearchClient(**cluster_kwargs)
-                    if client.client.cluster.health(params={"timeout": 5}):
-                        self.clients.append(client)
-                except Exception as e:
-                    message = f"Failed to set up opensearch client {str(cluster.hosts)}. {str(e)}"
-                    logging.exception(message)
-                    errors.append(message)
-
-            return len(self.clients) > 0, "\n".join(errors)
+            self.init_config(config)
+            return True, ""
         except Exception as e:
             logging.exception("Failed to set up OpenSearch toolset")
             return False, str(e)
@@ -244,10 +231,11 @@ class OpenSearchToolset(Toolset):
         )
         return example_config.model_dump()
 
-    def init_config(self):
-        os_config = OpenSearchConfig(**self.config)
+    def init_config(self, config: dict[str, Any]):
+        os_config = OpenSearchConfig(**config)
         for cluster in os_config.opensearch_clusters:
             logging.info("Setting up OpenSearch client")
             cluster_kwargs = cluster.model_dump()
             client = OpenSearchClient(**cluster_kwargs)
-            self.clients.append(client)
+            if client.client.cluster.health(params={"timeout": 5}):
+                self.clients.append(client)

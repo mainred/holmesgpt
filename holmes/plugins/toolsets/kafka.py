@@ -499,49 +499,21 @@ class KafkaToolset(Toolset):
             ],
         )
 
-    def prerequisites_callable(self) -> Tuple[bool, str]:
-        if not self.config:
+    def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
+        if not config:
             return False, TOOLSET_CONFIG_MISSING_ERROR
-        errors = []
         try:
-            kafka_config = KafkaConfig(**self.config)
-
-            for cluster in kafka_config.kafka_clusters:
-                try:
-                    logging.info(f"Setting up Kafka client for cluster: {cluster.name}")
-                    admin_config = {
-                        "bootstrap.servers": cluster.kafka_broker,
-                        "client.id": cluster.kafka_client_id,
-                    }
-
-                    if cluster.kafka_security_protocol:
-                        admin_config["security.protocol"] = (
-                            cluster.kafka_security_protocol
-                        )
-                    if cluster.kafka_sasl_mechanism:
-                        admin_config["sasl.mechanisms"] = cluster.kafka_sasl_mechanism
-                    if cluster.kafka_username and cluster.kafka_password:
-                        admin_config["sasl.username"] = cluster.kafka_username
-                        admin_config["sasl.password"] = cluster.kafka_password
-
-                    client = AdminClient(admin_config)
-                    self.clients[cluster.name] = client  # Store in dictionary
-                except Exception as e:
-                    message = (
-                        f"Failed to set up Kafka client for {cluster.name}: {str(e)}"
-                    )
-                    logging.error(message)
-                    errors.append(message)
-
-            return len(self.clients) > 0, "\n".join(errors)
+            self.init_config(config)
+            return True, ""
         except Exception as e:
             logging.exception("Failed to set up Kafka toolset")
             return False, str(e)
 
-    def init_config(self):
-        kafka_config = KafkaConfig(**self.config)
+    def init_config(self, config: dict[str, Any]):
+        kafka_config = KafkaConfig(**config)
 
         for cluster in kafka_config.kafka_clusters:
+            logging.info(f"Setting up Kafka client for cluster: {cluster.name}")
             admin_config = {
                 "bootstrap.servers": cluster.kafka_broker,
                 "client.id": cluster.kafka_client_id,
@@ -556,7 +528,7 @@ class KafkaToolset(Toolset):
                 admin_config["sasl.password"] = cluster.kafka_password
 
             client = AdminClient(admin_config)
-            self.clients[cluster.name] = client  # Store in dictionary
+            self.clients[cluster.name] = client
 
     def get_example_config(self) -> Dict[str, Any]:
         example_config = KafkaConfig(
