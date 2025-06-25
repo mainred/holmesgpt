@@ -13,5 +13,5 @@ def callable_failure_no_message(onfig: dict[str, Any]) -> Tuple[bool, str]:
     return False, ""
 
 
-def failing_callable_for_test(onfig: dict[str, Any]):
+def failing_callable_for_test(config: dict[str, Any]):
     raise Exception("Failure in callable prerequisite")

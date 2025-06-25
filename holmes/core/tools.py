@@ -452,9 +452,7 @@ class Toolset(BaseModel):
     @abstractmethod
     def init_config(self, config: dict[str, Any]):
         """
-        Initialize the toolset configuration.
-        CallablePrerequisite can be used to initialize the configuration of a toolset, and validate the configuration prerequisites,
-        but when prerequisites check is not required, use init_config to initialize the configuration.
+        Initialize the toolset typed configuration from the provided config.
         """
         pass
 

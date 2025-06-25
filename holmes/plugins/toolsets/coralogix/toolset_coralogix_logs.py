@@ -155,11 +155,12 @@ class CoralogixLogsToolset(BaseCoralogixToolset):
             return False, TOOLSET_CONFIG_MISSING_ERROR
         try:
             self.init_config(config)
-
-            if self.typed_config.api_key:  # type: ignore
+            if not self.typed_config:
+                return False, "Coralogix configuration is missing or invalid"
+            if self.typed_config.api_key:
                 return health_check(
-                    domain=self.typed_config.domain,  # type: ignore
-                    api_key=self.typed_config.api_key,  # type: ignore
+                    domain=self.typed_config.domain,
+                    api_key=self.typed_config.api_key,
                 )
             else:
                 return False, "Missing configuration field 'api_key'"

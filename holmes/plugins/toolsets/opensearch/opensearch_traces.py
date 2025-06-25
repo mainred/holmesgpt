@@ -143,7 +143,7 @@ class TracesSearchQuery(Tool):
             )
 
             logs_response = requests.get(
-                url=get_search_url(self._toolset.typed_config),  # type: ignore
+                url=get_search_url(self._toolset.typed_config),
                 timeout=180,
                 verify=True,
                 data=json.dumps(full_query),

@@ -156,10 +156,15 @@ class RabbitMQToolset(Toolset):
 
         try:
             self.init_config(config)
+            if not self.typed_config:
+                return (
+                    False,
+                    "RabbitMQ toolset is misconfigured.",
+                )
         except Exception as e:
             return (False, f"Failed to parse RabbitMQ configuration: {str(e)}")
 
-        return self._check_clusters_config(self.typed_config)  # type: ignore
+        return self._check_clusters_config(self.typed_config)
 
     def _check_clusters_config(self, config: RabbitMQConfig) -> Tuple[bool, str]:
         errors = []

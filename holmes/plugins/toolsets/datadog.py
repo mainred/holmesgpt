@@ -151,7 +151,8 @@ class DatadogToolset(Toolset):
     def get_example_config(self) -> Dict[str, Any]:
         return {}
 
-    def init_config(self, config: dict[str, Any]):
-        dd_config = DatadogConfig(**config)
-        self.dd_api_key = dd_config.dd_api_key
-        self.dd_app_key = dd_config.dd_app_key
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if config:
+            dd_config = DatadogConfig(**config)
+            self.dd_api_key = dd_config.dd_api_key
+            self.dd_app_key = dd_config.dd_app_key

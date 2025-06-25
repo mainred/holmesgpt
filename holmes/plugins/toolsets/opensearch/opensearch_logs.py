@@ -16,6 +16,7 @@ from holmes.core.tools import (
     ToolResultStatus,
     ToolsetTag,
 )
+from holmes.plugins.toolsets.consts import TOOLSET_CONFIG_MISSING_ERROR
 from holmes.plugins.toolsets.opensearch.opensearch_utils import (
     BaseOpenSearchToolset,
     add_auth_header,
@@ -139,9 +140,15 @@ class GetLogFields(Tool):
         self, headers: Dict, params: Dict
     ) -> StructuredToolResult:
         """Use the OpenSearch getMappings API to retrieve fields (new implementation)"""
+        if not self._toolset.typed_config:
+            return StructuredToolResult(
+                status=ToolResultStatus.ERROR,
+                error=TOOLSET_CONFIG_MISSING_ERROR,
+                params=params,
+            )
         url = urljoin(
-            self._toolset.typed_config.opensearch_url,  # type: ignore
-            f"/{self._toolset.typed_config.index_pattern}/_mapping",  # type: ignore
+            self._toolset.typed_config.opensearch_url,
+            f"/{self._toolset.typed_config.index_pattern}/_mapping",
         )
 
         mapping_response = requests.get(

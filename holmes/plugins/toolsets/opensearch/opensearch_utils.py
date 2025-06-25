@@ -36,7 +36,9 @@ class BaseOpenSearchToolset(Toolset):
         if not config and not env_url:
             return False, "Missing opensearch traces URL. Check your config"
         self.init_config(config)
-        return opensearch_health_check(self.typed_config)  # type: ignore
+        if not self.typed_config:
+            return False, "OpenSearch configuration is missing or invalid"
+        return opensearch_health_check(self.typed_config)
 
     def init_config(self, config: dict[str, Any]):
         env_url = os.environ.get("OPENSEARCH_LOGS_URL", None)
