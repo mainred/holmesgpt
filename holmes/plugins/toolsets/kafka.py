@@ -509,7 +509,9 @@ class KafkaToolset(Toolset):
             logging.exception("Failed to set up Kafka toolset")
             return False, str(e)
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if not config:
+            return
         kafka_config = KafkaConfig(**config)
 
         for cluster in kafka_config.kafka_clusters:

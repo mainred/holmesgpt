@@ -65,7 +65,10 @@ class OpenSearchLogsToolset(BasePodLoggingToolset):
 
         return opensearch_health_check(cast(BaseOpenSearchConfig, self.typed_config))
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if not config:
+            logging.error("OpenSearch config not provided")
+            return
         self.typed_config = OpenSearchLoggingConfig(**config)
 
     def fetch_pod_logs(self, params: FetchPodLogsParams) -> StructuredToolResult:

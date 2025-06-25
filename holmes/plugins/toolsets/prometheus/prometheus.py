@@ -826,7 +826,7 @@ class PrometheusToolset(Toolset):
         )
         return example_config.model_dump()
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
         if config:
             self.typed_config = PrometheusConfig(**config)
         else:

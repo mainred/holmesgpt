@@ -215,7 +215,7 @@ class RabbitMQToolset(Toolset):
         )
         return example_config.model_dump()
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
         if not config or not config.get("clusters"):
             # Attempt to load from environment variables as fallback
             env_url = os.environ.get("RABBITMQ_MANAGEMENT_URL")

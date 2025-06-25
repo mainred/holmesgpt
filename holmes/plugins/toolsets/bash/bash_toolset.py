@@ -207,7 +207,7 @@ class BashExecutorToolset(BaseBashExecutorToolset):
             return False, str(e)
         return True, ""
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
         if config:
             self.typed_config = BashExecutorConfig(**config)
         else:

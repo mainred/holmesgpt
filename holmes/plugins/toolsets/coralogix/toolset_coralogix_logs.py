@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Optional, Tuple
 
 from holmes.core.tools import (
@@ -62,7 +63,10 @@ class CoralogixLogsToolset(BasePodLoggingToolset):
             domain=self.typed_config.domain, api_key=self.typed_config.api_key
         )
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if not config:
+            logging.error("Coralogix config not provided")
+            return
         self.typed_config = CoralogixConfig(**config)
 
     def fetch_pod_logs(self, params: FetchPodLogsParams) -> StructuredToolResult:

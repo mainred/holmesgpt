@@ -1,7 +1,7 @@
 # type: ignore
 import os
 import subprocess
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from unittest.mock import Mock, call, patch
 
 from holmes.core.tools import (
@@ -43,7 +43,7 @@ class SampleToolset(Toolset):
     def get_example_config(self) -> Dict[str, Any]:
         return {}
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
         pass
 
 

@@ -152,7 +152,9 @@ class DatadogToolset(Toolset):
         return {}
 
     def init_config(self, config: Optional[dict[str, Any]]):
-        if config:
-            dd_config = DatadogConfig(**config)
-            self.dd_api_key = dd_config.dd_api_key
-            self.dd_app_key = dd_config.dd_app_key
+        if not config:
+            logging.error("Datadog config not provided")
+            return
+        dd_config = DatadogConfig(**config)
+        self.dd_api_key = dd_config.dd_api_key
+        self.dd_app_key = dd_config.dd_app_key

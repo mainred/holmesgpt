@@ -167,7 +167,7 @@ class BaseOpenSearchToolset(Toolset):
             return False, "Missing opensearch traces configuration"
         return opensearch_health_check(self.typed_config)
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
         env_url = os.environ.get("OPENSEARCH_LOGS_URL", None)
         env_index_pattern = os.environ.get("OPENSEARCH_LOGS_INDEX_NAME", "*")
         if not config and env_url:
@@ -178,5 +178,5 @@ class BaseOpenSearchToolset(Toolset):
                     "OPENSEARCH_LOGS_AUTH_HEADER", None
                 ),
             )
-        else:
+        elif config:
             self.typed_config = BaseOpenSearchConfig(**config)

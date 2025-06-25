@@ -449,9 +449,12 @@ class Toolset(BaseModel):
         return {}
 
     @abstractmethod
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
         """
         Initialize the toolset typed configuration from the provided config.
+
+        Normally, init_config is called after prerequisites are checked and the config is not None.
+        It's possible to initialize the typed configuration when the config is None like when the configs are read from environment variables
         """
         pass
 
@@ -474,7 +477,7 @@ class YAMLToolset(Toolset):
     def get_example_config(self) -> Dict[str, Any]:
         return {}
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
         pass
 
 
@@ -510,7 +513,7 @@ class ToolsetYamlFromConfig(Toolset):
     def get_example_config(self) -> Dict[str, Any]:
         return {}
 
-    def init_config(self):
+    def init_config(self, config: Optional[dict[str, Any]]):
         pass
 
 

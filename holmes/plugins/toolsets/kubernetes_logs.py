@@ -256,7 +256,7 @@ class KubernetesLogsToolset(BasePodLoggingToolset):
             )
             raise
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
         pass
 
 

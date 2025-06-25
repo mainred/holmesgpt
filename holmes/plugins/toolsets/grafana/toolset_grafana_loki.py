@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Optional, cast
 
 from pydantic import BaseModel
@@ -56,7 +57,10 @@ class GrafanaLokiToolset(BasePodLoggingToolset):
 
         return grafana_health_check(cast(GrafanaLokiConfig, self.typed_config))
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if not config:
+            logging.error("Grafana Loki config not provided")
+            return
         self.typed_config = GrafanaLokiConfig(**config)
 
     def get_example_config(self):

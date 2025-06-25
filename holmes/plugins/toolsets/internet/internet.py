@@ -253,7 +253,7 @@ class InternetBaseToolset(Toolset):
             "additional_headers": {"Authorization": "Basic <base_64_encoded_string>"}
         }
 
-    def init_config(self, config: dict[str, Any]):
+    def init_config(self, config: Optional[dict[str, Any]]):
         if config:
             self.additional_headers = config.get("additional_headers", {})
 

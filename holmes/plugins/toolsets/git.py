@@ -85,12 +85,15 @@ class GitToolset(Toolset):
             logging.exception("GitHub prerequisites failed.")
             return False, ""
 
-    def init_config(self, config: dict[str, Any]):
-        self.git_repo = os.getenv("GIT_REPO") or config.get("git_repo")
-        self.git_credentials = os.getenv("GIT_CREDENTIALS") or config.get(
-            "git_credentials"
-        )
-        self.git_branch = os.getenv("GIT_BRANCH") or config.get("git_branch", "main")
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if config:
+            self.git_repo = config.get("git_repo")
+            self.git_credentials = config.get("git_credentials")
+            self.git_branch = config.get("git_branch", "main")
+        elif os.getenv("GIT_REPO") and os.getenv("GIT_CREDENTIALS"):
+            self.git_repo = os.getenv("GIT_REPO")
+            self.git_credentials = os.getenv("GIT_CREDENTIALS")
+            self.git_branch = os.getenv("GIT_BRANCH", "main")
 
     def get_example_config(self) -> Dict[str, Any]:
         return {}
