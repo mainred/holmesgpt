@@ -773,6 +773,14 @@ class PrometheusToolset(Toolset):
         self._load_llm_instructions(jinja_template=f"file://{template_file_path}")
 
     def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
+        prometheus_url = os.environ.get("PROMETHEUS_URL")
+        if not prometheus_url:
+            prometheus_url = self.auto_detect_prometheus_url()
+            if not prometheus_url:
+                return (
+                    False,
+                    "Unable to auto-detect prometheus. Define prometheus_url in the configuration for tool prometheus/metrics",
+                )
         self.init_config(config)
         self._reload_llm_instructions()
         return self._is_healthy()

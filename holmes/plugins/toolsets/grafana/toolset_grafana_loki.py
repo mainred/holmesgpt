@@ -73,7 +73,7 @@ class GrafanaLokiToolset(BasePodLoggingToolset):
 
     @property
     def grafana_config(self) -> GrafanaLokiConfig:
-        return cast(GrafanaLokiConfig, self.config)
+        return cast(GrafanaLokiConfig, self.typed_config)
 
     def fetch_pod_logs(self, params: FetchPodLogsParams) -> StructuredToolResult:
         (start, end) = process_timestamps_to_rfc3339(

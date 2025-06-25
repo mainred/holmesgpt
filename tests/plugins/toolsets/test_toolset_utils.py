@@ -1,5 +1,9 @@
+from typing import Any, Optional
+
 import pytest
 from dateutil import parser  # type: ignore
+from freezegun import freeze_time
+
 from holmes.core.tools import (
     StructuredToolResult,
     ToolResultStatus,
@@ -12,7 +16,6 @@ from holmes.plugins.toolsets.logging_utils.logging_api import (
     FetchPodLogsParams,
 )
 from holmes.plugins.toolsets.utils import process_timestamps_to_rfc3339, to_unix_ms
-from freezegun import freeze_time
 
 
 @freeze_time("2020-09-14T13:50:40Z")
@@ -159,6 +162,9 @@ class DummyNonLoggingToolset(Toolset):
 
     def get_example_config(self):
         return {}
+
+    def init_config(self, config: Optional[dict[str, Any]]):
+        pass
 
 
 class DummyLoggingToolset(BasePodLoggingToolset):
