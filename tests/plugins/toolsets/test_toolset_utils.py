@@ -179,6 +179,9 @@ class DummyLoggingToolset(BasePodLoggingToolset):
     def get_example_config(self):
         return {}
 
+    def init_config(self, config: Optional[dict[str, Any]]):
+        pass
+
 
 @pytest.mark.parametrize(
     "unfiltered_toolsets, expected_toolsets",

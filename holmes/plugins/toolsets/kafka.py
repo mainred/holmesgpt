@@ -511,26 +511,34 @@ class KafkaToolset(Toolset):
 
     def init_config(self, config: Optional[dict[str, Any]]):
         if not config:
+            logging.error("Kafka config not provided")
             return
         kafka_config = KafkaConfig(**config)
-
+        errors = []
         for cluster in kafka_config.kafka_clusters:
-            logging.info(f"Setting up Kafka client for cluster: {cluster.name}")
-            admin_config = {
-                "bootstrap.servers": cluster.kafka_broker,
-                "client.id": cluster.kafka_client_id,
-            }
+            try:
+                logging.info(f"Setting up Kafka client for cluster: {cluster.name}")
+                admin_config = {
+                    "bootstrap.servers": cluster.kafka_broker,
+                    "client.id": cluster.kafka_client_id,
+                }
 
-            if cluster.kafka_security_protocol:
-                admin_config["security.protocol"] = cluster.kafka_security_protocol
-            if cluster.kafka_sasl_mechanism:
-                admin_config["sasl.mechanisms"] = cluster.kafka_sasl_mechanism
-            if cluster.kafka_username and cluster.kafka_password:
-                admin_config["sasl.username"] = cluster.kafka_username
-                admin_config["sasl.password"] = cluster.kafka_password
+                if cluster.kafka_security_protocol:
+                    admin_config["security.protocol"] = cluster.kafka_security_protocol
+                if cluster.kafka_sasl_mechanism:
+                    admin_config["sasl.mechanisms"] = cluster.kafka_sasl_mechanism
+                if cluster.kafka_username and cluster.kafka_password:
+                    admin_config["sasl.username"] = cluster.kafka_username
+                    admin_config["sasl.password"] = cluster.kafka_password
 
-            client = AdminClient(admin_config)
-            self.clients[cluster.name] = client
+                client = AdminClient(admin_config)
+                self.clients[cluster.name] = client  # Store in dictionary
+            except Exception as e:
+                message = f"Failed to set up Kafka client for {cluster.name}: {str(e)}"
+                logging.error(message)
+                errors.append(message)
+        if len(errors) > 0:
+            raise Exception("\n".join(errors))
 
     def get_example_config(self) -> Dict[str, Any]:
         example_config = KafkaConfig(
