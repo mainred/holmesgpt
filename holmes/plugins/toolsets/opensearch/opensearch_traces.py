@@ -131,6 +131,12 @@ class TracesSearchQuery(Tool):
     def _invoke(self, params: Any) -> StructuredToolResult:
         err_msg = ""
         try:
+            if not self._toolset.typed_config:
+                return StructuredToolResult(
+                    status=ToolResultStatus.ERROR,
+                    error=f"The {self._toolset.name} toolset is not configured",
+                    params=params,
+                )
             body = json.loads(params.get("query"))
             full_query = body
             full_query["size"] = int(

@@ -55,7 +55,7 @@ class BaseGrafanaTempoToolset(BaseGrafanaToolset):
 
     @property
     def grafana_config(self) -> GrafanaTempoConfig:
-        return cast(GrafanaTempoConfig, self._grafana_config)
+        return cast(GrafanaTempoConfig, self.typed_config)
 
 
 def validate_params(params: Dict[str, Any], expected_params: List[str]):

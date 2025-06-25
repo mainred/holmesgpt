@@ -1,22 +1,13 @@
-import logging
 from typing import Any, Optional, Tuple
 
 from holmes.core.tools import (
     CallablePrerequisite,
     StructuredToolResult,
-    Tool,
-    ToolParameter,
     ToolResultStatus,
-    Toolset,
     ToolsetTag,
 )
-from holmes.plugins.toolsets.consts import (
-    STANDARD_END_DATETIME_TOOL_PARAM_DESCRIPTION,
-    TOOLSET_CONFIG_MISSING_ERROR,
-)
+from holmes.plugins.toolsets.consts import TOOLSET_CONFIG_MISSING_ERROR
 from holmes.plugins.toolsets.coralogix.api import (
-    DEFAULT_LOG_COUNT,
-    DEFAULT_TIME_SPAN_SECONDS,
     build_query_string,
     get_start_end,
     health_check,
@@ -27,11 +18,28 @@ from holmes.plugins.toolsets.coralogix.utils import (
     build_coralogix_link_to_logs,
     stringify_flattened_logs,
 )
-from holmes.plugins.toolsets.utils import standard_start_datetime_tool_param_description
+from holmes.plugins.toolsets.logging_utils.logging_api import (
+    BasePodLoggingToolset,
+    FetchPodLogsParams,
+    PodLoggingTool,
+)
 
 
-class BaseCoralogixToolset(Toolset):
+class CoralogixLogsToolset(BasePodLoggingToolset):
     typed_config: Optional[CoralogixConfig] = None
+
+    def __init__(self):
+        super().__init__(
+            name="coralogix/logs",
+            description="Toolset for interacting with Coralogix to fetch logs",
+            docs_url="https://docs.robusta.dev/master/configuration/holmesgpt/toolsets/coralogix_logs.html",
+            icon_url="https://avatars.githubusercontent.com/u/35295744?s=200&v=4",
+            prerequisites=[CallablePrerequisite(callable=self.prerequisites_callable)],
+            tools=[
+                PodLoggingTool(self),
+            ],
+            tags=[ToolsetTag.CORE],
+        )
 
     def get_example_config(self):
         example_config = CoralogixConfig(
@@ -39,72 +47,38 @@ class BaseCoralogixToolset(Toolset):
         )
         return example_config.model_dump()
 
+    def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
+        if not config:
+            return False, TOOLSET_CONFIG_MISSING_ERROR
 
-class BaseCoralogixTool(Tool):
-    toolset: BaseCoralogixToolset
+        self.init_config(config)
+        if not self.typed_config:
+            return False, "Coralogix toolset is misconfigured."
 
+        if not self.typed_config.api_key:
+            return False, "Missing configuration field 'api_key'"
 
-class FetchLogs(BaseCoralogixTool):
-    def __init__(self, toolset: BaseCoralogixToolset):
-        super().__init__(
-            name="fetch_coralogix_logs_for_resource",
-            description="Retrieve logs using coralogix",
-            parameters={
-                "resource_type": ToolParameter(
-                    description="The type of resource. Can be one of pod, application or subsystem. Defaults to pod.",
-                    type="string",
-                    required=False,
-                ),
-                "resource_name": ToolParameter(
-                    description='Regular expression to match the resource name. This can be a regular expression. For example "<pod-name>.*" will match any pod name starting with "<pod-name>"',
-                    type="string",
-                    required=True,
-                ),
-                "namespace_name": ToolParameter(
-                    description="The Kubernetes namespace to filter logs",
-                    type="string",
-                    required=False,
-                ),
-                "start": ToolParameter(
-                    description=standard_start_datetime_tool_param_description(
-                        DEFAULT_TIME_SPAN_SECONDS
-                    ),
-                    type="string",
-                    required=False,
-                ),
-                "end": ToolParameter(
-                    description=STANDARD_END_DATETIME_TOOL_PARAM_DESCRIPTION,
-                    type="string",
-                    required=False,
-                ),
-                "log_count": ToolParameter(
-                    description=f"Maximum number of logs to retrieve (default: {DEFAULT_LOG_COUNT})",
-                    type="integer",
-                    required=False,
-                ),
-            },
-            toolset=toolset,
+        return health_check(
+            domain=self.typed_config.domain, api_key=self.typed_config.api_key
         )
 
-    def _invoke(self, params: Any) -> StructuredToolResult:
-        if not self.toolset.typed_config:
+    def init_config(self, config: dict[str, Any]):
+        self.typed_config = CoralogixConfig(**config)
+
+    def fetch_pod_logs(self, params: FetchPodLogsParams) -> StructuredToolResult:
+        if not self.typed_config:
             return StructuredToolResult(
                 status=ToolResultStatus.ERROR,
-                error="The coralogix/logs toolset is not configured",
-                data=None,
-                params=params,
+                error=TOOLSET_CONFIG_MISSING_ERROR,
+                params=params.model_dump(),
             )
 
-        logs_data = query_logs_for_all_tiers(
-            config=self.toolset.typed_config, params=params
-        )
-        (start, end) = get_start_end(config=self.toolset.typed_config, params=params)
-        query_string = build_query_string(
-            config=self.toolset.typed_config, params=params
-        )
+        logs_data = query_logs_for_all_tiers(config=self.typed_config, params=params)
+        (start, end) = get_start_end(params=params)
+        query_string = build_query_string(config=self.typed_config, params=params)
 
         url = build_coralogix_link_to_logs(
-            config=self.toolset.typed_config,
+            config=self.typed_config,
             lucene_query=query_string,
             start=start,
             end=end,
@@ -126,47 +100,5 @@ class FetchLogs(BaseCoralogixTool):
             data=data,
             url=url,
             invocation=query_string,
-            params=params,
+            params=params.model_dump(),
         )
-
-    def get_parameterized_one_liner(self, params) -> str:
-        if not self.toolset.typed_config:
-            return "The coralogix/logs toolset is not configured"
-        query_string = build_query_string(self.toolset.typed_config, params)
-        return f"fetching coralogix logs. query={query_string}"
-
-
-class CoralogixLogsToolset(BaseCoralogixToolset):
-    def __init__(self):
-        super().__init__(
-            name="coralogix/logs",
-            description="Toolset for interacting with Coralogix to fetch logs",
-            docs_url="https://docs.robusta.dev/master/configuration/holmesgpt/toolsets/coralogix_logs.html",
-            icon_url="https://avatars.githubusercontent.com/u/35295744?s=200&v=4",
-            prerequisites=[CallablePrerequisite(callable=self.prerequisites_callable)],
-            tools=[
-                FetchLogs(self),
-            ],
-            tags=[ToolsetTag.CORE],
-        )
-
-    def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
-        if not config:
-            return False, TOOLSET_CONFIG_MISSING_ERROR
-        try:
-            self.init_config(config)
-            if not self.typed_config:
-                return False, "Coralogix configuration is missing or invalid"
-            if self.typed_config.api_key:
-                return health_check(
-                    domain=self.typed_config.domain,
-                    api_key=self.typed_config.api_key,
-                )
-            else:
-                return False, "Missing configuration field 'api_key'"
-        except Exception as e:
-            logging.exception("Failed to set up Coralogix toolset")
-            return False, str(e)
-
-    def init_config(self, config: dict[str, Any]):
-        self.typed_config = CoralogixConfig(**config)
