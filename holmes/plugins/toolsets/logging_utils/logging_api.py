@@ -1,16 +1,11 @@
-from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
 import logging
+from abc import ABC, abstractmethod
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from pydantic import BaseModel
-from datetime import timezone
-from holmes.core.tools import (
-    StructuredToolResult,
-    Tool,
-    ToolParameter,
-    Toolset,
-)
+
+from holmes.core.tools import StructuredToolResult, Tool, ToolParameter, Toolset
 from holmes.plugins.toolsets.utils import get_param_or_raise
 
 # Default values for log fetching

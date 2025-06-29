@@ -1,6 +1,7 @@
 import logging
 import re
-from typing import Optional, List, Any, Tuple
+from typing import Any, List, Optional, Tuple
+
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
 from pydantic import BaseModel
@@ -18,7 +19,6 @@ from holmes.plugins.toolsets.logging_utils.logging_api import (
     PodLoggingTool,
 )
 from holmes.plugins.toolsets.utils import process_timestamps_to_int, to_unix_ms
-
 
 # match ISO 8601 format (YYYY-MM-DDTHH:MM:SS[.fffffffff]Z) or (YYYY-MM-DDTHH:MM:SS[.fffffffff]+/-XX:XX)
 timestamp_pattern = re.compile(
@@ -131,9 +131,11 @@ class KubernetesLogsToolset(BasePodLoggingToolset):
             )
 
             return StructuredToolResult(
-                status=ToolResultStatus.SUCCESS
-                if formatted_logs
-                else ToolResultStatus.NO_DATA,
+                status=(
+                    ToolResultStatus.SUCCESS
+                    if formatted_logs
+                    else ToolResultStatus.NO_DATA
+                ),
                 data=formatted_logs,
                 params=params.model_dump(),
             )
@@ -254,6 +256,9 @@ class KubernetesLogsToolset(BasePodLoggingToolset):
                 f"Error fetching logs. params={query_params}. Error: {str(e)}"
             )
             raise
+
+    def init_config(self, config: Optional[dict[str, Any]]):
+        pass
 
 
 def format_logs(logs: List[StructuredLog], display_container_name: bool) -> str:

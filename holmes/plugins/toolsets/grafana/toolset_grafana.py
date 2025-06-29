@@ -1,9 +1,17 @@
+import logging
 from typing import Dict, List
 from urllib.parse import urlencode, urljoin
-from holmes.core.tools import Tool, ToolParameter
-from holmes.plugins.toolsets.grafana.base_grafana_toolset import BaseGrafanaToolset
+
 import requests  # type: ignore
-import logging
+
+from holmes.core.tools import (
+    StructuredToolResult,
+    Tool,
+    ToolParameter,
+    ToolResultStatus,
+)
+from holmes.plugins.toolsets.consts import TOOLSET_CONFIG_MISSING_ERROR
+from holmes.plugins.toolsets.grafana.base_grafana_toolset import BaseGrafanaToolset
 
 
 class ListAndBuildGrafanaDashboardURLs(Tool):
@@ -36,11 +44,15 @@ class ListAndBuildGrafanaDashboardURLs(Tool):
         )
         self._toolset = toolset
 
-    def _invoke(self, params: Dict) -> str:  # type: ignore
-        url = urljoin(
-            self._toolset._grafana_config.url, "/api/search?query=&type=dash-db"
-        )
-        headers = {"Authorization": f"Bearer {self._toolset._grafana_config.api_key}"}
+    def _invoke(self, params: Dict) -> StructuredToolResult:
+        if not self._toolset.typed_config:
+            return StructuredToolResult(
+                status=ToolResultStatus.ERROR,
+                error=TOOLSET_CONFIG_MISSING_ERROR,
+                params=params,
+            )
+        url = urljoin(self._toolset.typed_config.url, "/api/search?query=&type=dash-db")
+        headers = {"Authorization": f"Bearer {self._toolset.typed_config.api_key}"}
 
         try:
             response = requests.get(url, headers=headers)
@@ -48,8 +60,8 @@ class ListAndBuildGrafanaDashboardURLs(Tool):
             dashboards = response.json()
             formatted_dashboards: List[str] = []
             base_url = (
-                self._toolset._grafana_config.external_url
-                or self._toolset._grafana_config.url
+                self._toolset.typed_config.external_url
+                or self._toolset.typed_config.url
             )
             for dash in dashboards:
                 dashboard_url = urljoin(
@@ -62,7 +74,7 @@ class ListAndBuildGrafanaDashboardURLs(Tool):
                     "var-namespace": params.get("namespace", ""),
                     "var-pod": params.get("pod_name", ""),
                     "var-node": params.get("node_name", ""),
-                    "var-datasource": self._toolset._grafana_config.grafana_datasource_uid,
+                    "var-datasource": self._toolset.typed_config.grafana_datasource_uid,
                     "refresh": "5s",
                 }
 
@@ -79,11 +91,18 @@ class ListAndBuildGrafanaDashboardURLs(Tool):
                 formatted_dashboards.append(
                     f"Title: {dash['title']}\nURL: {dashboard_url}\n"
                 )
-
-            return "\n".join(formatted_dashboards) or "No dashboards found."
+            return StructuredToolResult(
+                status=ToolResultStatus.SUCCESS,
+                data="\n".join(formatted_dashboards) or "No dashboards found.",
+                params=params,
+            )
         except requests.RequestException as e:
             logging.error(f"Error fetching dashboards: {str(e)}")
-            return f"Error fetching dashboards: {str(e)}"
+            return StructuredToolResult(
+                status=ToolResultStatus.ERROR,
+                data=f"Error fetching dashboards: {str(e)}",
+                params=params,
+            )
 
     def get_parameterized_one_liner(self, params: Dict) -> str:
         return f"Lists Grafana dashboards and builds URLs with parameters: {params}"

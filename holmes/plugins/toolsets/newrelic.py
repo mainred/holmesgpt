@@ -1,15 +1,19 @@
-import requests  # type: ignore
 import logging
-from typing import Any, Optional, Dict
+from typing import Any, Dict, Optional, Tuple
+
+import requests  # type: ignore
+from pydantic import BaseModel
+
 from holmes.core.tools import (
     CallablePrerequisite,
+    StructuredToolResult,
     Tool,
     ToolParameter,
+    ToolResultStatus,
     Toolset,
     ToolsetTag,
 )
-from pydantic import BaseModel
-from holmes.core.tools import StructuredToolResult, ToolResultStatus
+from holmes.plugins.toolsets.consts import TOOLSET_CONFIG_MISSING_ERROR
 
 
 class BaseNewRelicTool(Tool):
@@ -199,24 +203,28 @@ class NewRelicToolset(Toolset):
             tags=[ToolsetTag.CORE],
         )
 
-    def prerequisites_callable(
-        self, config: dict[str, Any]
-    ) -> tuple[bool, Optional[str]]:
+    def prerequisites_callable(self, config: dict[str, Any]) -> Tuple[bool, str]:
         if not config:
-            return False, "No configuration provided"
+            return False, TOOLSET_CONFIG_MISSING_ERROR
 
         try:
-            nr_config = NewrelicConfig(**config)
-            self.nr_account_id = nr_config.nr_account_id
-            self.nr_api_key = nr_config.nr_api_key
+            self.init_config(config)
 
             if not self.nr_account_id or not self.nr_api_key:
                 return False, "New Relic account ID or API key is missing"
 
-            return True, None
+            return True, ""
         except Exception as e:
             logging.exception("Failed to set up New Relic toolset")
             return False, str(e)
 
     def get_example_config(self) -> Dict[str, Any]:
         return {}
+
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if not config:
+            logging.error("New Relic config not provided")
+            return
+        nr_config = NewrelicConfig(**config)
+        self.nr_account_id = nr_config.nr_account_id
+        self.nr_api_key = nr_config.nr_api_key

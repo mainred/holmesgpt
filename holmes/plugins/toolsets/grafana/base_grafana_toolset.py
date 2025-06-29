@@ -1,15 +1,16 @@
 import logging
-from typing import Any, ClassVar, Tuple, Type
+from typing import Any, ClassVar, Optional, Tuple, Type
 
 from holmes.core.tools import CallablePrerequisite, Tool, Toolset, ToolsetTag
 from holmes.plugins.toolsets.consts import TOOLSET_CONFIG_MISSING_ERROR
 from holmes.plugins.toolsets.grafana.common import GrafanaConfig
-
 from holmes.plugins.toolsets.grafana.grafana_api import grafana_health_check
 
 
 class BaseGrafanaToolset(Toolset):
     config_class: ClassVar[Type[GrafanaConfig]] = GrafanaConfig
+
+    typed_config: Optional[GrafanaConfig] = None
 
     def __init__(
         self,
@@ -38,8 +39,10 @@ class BaseGrafanaToolset(Toolset):
             return False, TOOLSET_CONFIG_MISSING_ERROR
 
         try:
-            self._grafana_config = self.config_class(**config)
-            return grafana_health_check(self._grafana_config)
+            self.init_config(config)
+            if not self.typed_config:
+                return False, "Grafana toolset is misconfigured."
+            return grafana_health_check(self.typed_config)
 
         except Exception as e:
             logging.exception(f"Failed to set up grafana toolset {self.name}")
@@ -52,3 +55,9 @@ class BaseGrafanaToolset(Toolset):
             grafana_datasource_uid="UID OF DATASOURCE IN GRAFANA",
         )
         return example_config.model_dump()
+
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if not config:
+            logging.error("Grafana config not provided")
+            return
+        self.typed_config = self.config_class(**config)

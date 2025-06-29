@@ -1,17 +1,19 @@
 import base64
 import logging
-import requests  # type: ignore
 import os
-from typing import Any, Optional, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
+import requests  # type: ignore
 from pydantic import BaseModel
-from holmes.core.tools import StructuredToolResult, ToolResultStatus
 
 from holmes.core.tools import (
-    Toolset,
+    CallablePrerequisite,
+    StructuredToolResult,
     Tool,
     ToolParameter,
+    ToolResultStatus,
+    Toolset,
     ToolsetTag,
-    CallablePrerequisite,
 )
 
 
@@ -73,13 +75,7 @@ class GitToolset(Toolset):
             return False, "Missing one or more required Git configuration values."
 
         try:
-            self.git_repo = os.getenv("GIT_REPO") or config.get("git_repo")
-            self.git_credentials = os.getenv("GIT_CREDENTIALS") or config.get(
-                "git_credentials"
-            )
-            self.git_branch = os.getenv("GIT_BRANCH") or config.get(
-                "git_branch", "main"
-            )
+            self.init_config(config)
 
             if not all([self.git_repo, self.git_credentials, self.git_branch]):
                 logging.error("Missing one or more required Git configuration values.")
@@ -88,6 +84,16 @@ class GitToolset(Toolset):
         except Exception:
             logging.exception("GitHub prerequisites failed.")
             return False, ""
+
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if config:
+            self.git_repo = config.get("git_repo")
+            self.git_credentials = config.get("git_credentials")
+            self.git_branch = config.get("git_branch", "main")
+        elif os.getenv("GIT_REPO") and os.getenv("GIT_CREDENTIALS"):
+            self.git_repo = os.getenv("GIT_REPO")
+            self.git_credentials = os.getenv("GIT_CREDENTIALS")
+            self.git_branch = os.getenv("GIT_BRANCH", "main")
 
     def get_example_config(self) -> Dict[str, Any]:
         return {}

@@ -1,25 +1,25 @@
-import os
+import json
 import logging
-
+import os
 from typing import Any, Dict
 
 import requests  # type: ignore
 from cachetools import TTLCache  # type: ignore
-from holmes.core.tools import (
-    CallablePrerequisite,
-    Tool,
-    ToolParameter,
-    ToolsetTag,
-)
-import json
 from requests import RequestException
 
+from holmes.core.tools import (
+    CallablePrerequisite,
+    StructuredToolResult,
+    Tool,
+    ToolParameter,
+    ToolResultStatus,
+    ToolsetTag,
+)
 from holmes.plugins.toolsets.opensearch.opensearch_utils import (
     BaseOpenSearchToolset,
     add_auth_header,
     get_search_url,
 )
-from holmes.core.tools import StructuredToolResult, ToolResultStatus
 
 TRACES_FIELDS_CACHE_KEY = "cached_traces_fields"
 
@@ -36,9 +36,10 @@ class GetTracesFields(Tool):
 
     def _invoke(self, params: Dict) -> StructuredToolResult:
         try:
-            if not self._cache and self._toolset.opensearch_config.fields_ttl_seconds:
+            if not self._cache and self._toolset.typed_config.fields_ttl_seconds:  # type: ignore
                 self._cache = TTLCache(
-                    maxsize=5, ttl=self._toolset.opensearch_config.fields_ttl_seconds
+                    maxsize=5,
+                    ttl=self._toolset.typed_config.fields_ttl_seconds,  # type: ignore
                 )
 
             if self._cache:
@@ -65,10 +66,10 @@ class GetTracesFields(Tool):
             }
             headers = {"Content-Type": "application/json"}
             headers.update(
-                add_auth_header(self._toolset.opensearch_config.opensearch_auth_header)
+                add_auth_header(self._toolset.typed_config.opensearch_auth_header)  # type: ignore
             )
             logs_response = requests.get(
-                url=get_search_url(self._toolset.opensearch_config),
+                url=get_search_url(self._toolset.typed_config),  # type: ignore
                 timeout=180,
                 verify=True,
                 data=json.dumps(body),
@@ -130,6 +131,12 @@ class TracesSearchQuery(Tool):
     def _invoke(self, params: Any) -> StructuredToolResult:
         err_msg = ""
         try:
+            if not self._toolset.typed_config:
+                return StructuredToolResult(
+                    status=ToolResultStatus.ERROR,
+                    error=f"The {self._toolset.name} toolset is not configured",
+                    params=params,
+                )
             body = json.loads(params.get("query"))
             full_query = body
             full_query["size"] = int(
@@ -138,11 +145,11 @@ class TracesSearchQuery(Tool):
             logging.debug(f"opensearch traces search query: {full_query}")
             headers = {"Content-Type": "application/json"}
             headers.update(
-                add_auth_header(self._toolset.opensearch_config.opensearch_auth_header)
+                add_auth_header(self._toolset.typed_config.opensearch_auth_header)  # type: ignore
             )
 
             logs_response = requests.get(
-                url=get_search_url(self._toolset.opensearch_config),
+                url=get_search_url(self._toolset.typed_config),
                 timeout=180,
                 verify=True,
                 data=json.dumps(full_query),

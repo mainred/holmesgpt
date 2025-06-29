@@ -133,6 +133,7 @@ def test_load_toolset_with_status_reads_cache(mock_list_all_toolsets, toolset_ma
     toolset.type = ToolsetType.BUILTIN
     toolset.path = None
     toolset.error = None
+    toolset.config = None
     mock_list_all_toolsets.return_value = [toolset]
     with tempfile.TemporaryDirectory() as tmpdir:
         cache_path = os.path.join(tmpdir, "toolsets_status.json")

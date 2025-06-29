@@ -1,26 +1,26 @@
-from typing import Any, cast
+import logging
+from typing import Any, Optional, cast
+
 from pydantic import BaseModel
 
-from holmes.core.tools import CallablePrerequisite
+from holmes.core.tools import (
+    CallablePrerequisite,
+    StructuredToolResult,
+    ToolResultStatus,
+)
 from holmes.plugins.toolsets.grafana.common import (
     GrafanaConfig,
     format_log,
     get_base_url,
 )
 from holmes.plugins.toolsets.grafana.grafana_api import grafana_health_check
+from holmes.plugins.toolsets.grafana.loki_api import query_loki_logs_by_label
 from holmes.plugins.toolsets.logging_utils.logging_api import (
     BasePodLoggingToolset,
     FetchPodLogsParams,
     PodLoggingTool,
 )
-from holmes.plugins.toolsets.utils import (
-    process_timestamps_to_rfc3339,
-)
-
-from holmes.plugins.toolsets.grafana.loki_api import (
-    query_loki_logs_by_label,
-)
-from holmes.core.tools import StructuredToolResult, ToolResultStatus
+from holmes.plugins.toolsets.utils import process_timestamps_to_rfc3339
 
 DEFAULT_TIME_SPAN_SECONDS = 3600
 
@@ -35,6 +35,8 @@ class GrafanaLokiConfig(GrafanaConfig):
 
 
 class GrafanaLokiToolset(BasePodLoggingToolset):
+    typed_config: Optional[GrafanaLokiConfig] = None
+
     def __init__(self):
         super().__init__(
             name="grafana/loki",
@@ -51,9 +53,15 @@ class GrafanaLokiToolset(BasePodLoggingToolset):
         if not config:
             return False, "Missing Grafana Loki configuration. Check your config."
 
-        self.config = GrafanaLokiConfig(**config)
+        self.init_config(config)
 
-        return grafana_health_check(self.config)
+        return grafana_health_check(cast(GrafanaLokiConfig, self.typed_config))
+
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if not config:
+            logging.error("Grafana Loki config not provided")
+            return
+        self.typed_config = GrafanaLokiConfig(**config)
 
     def get_example_config(self):
         example_config = GrafanaLokiConfig(
@@ -65,7 +73,7 @@ class GrafanaLokiToolset(BasePodLoggingToolset):
 
     @property
     def grafana_config(self) -> GrafanaLokiConfig:
-        return cast(GrafanaLokiConfig, self.config)
+        return cast(GrafanaLokiConfig, self.typed_config)
 
     def fetch_pod_logs(self, params: FetchPodLogsParams) -> StructuredToolResult:
         (start, end) = process_timestamps_to_rfc3339(

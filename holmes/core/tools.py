@@ -5,6 +5,7 @@ import re
 import shlex
 import subprocess
 import tempfile
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
@@ -13,11 +14,10 @@ from typing import Any, Callable, Dict, List, Optional, OrderedDict, Tuple, Unio
 from jinja2 import Template
 from pydantic import BaseModel, ConfigDict, Field, FilePath, model_validator
 from rich.console import Console
+from rich.table import Table
 
 from holmes.core.openai_formatting import format_tool_to_open_ai_standard
 from holmes.plugins.prompts import load_and_render_prompt
-import time
-from rich.table import Table
 
 
 class ToolResultStatus(str, Enum):
@@ -340,7 +340,8 @@ class Toolset(BaseModel):
     tags: List[ToolsetTag] = Field(
         default_factory=lambda: [ToolsetTag.CORE],
     )
-    config: Optional[Any] = None
+    # config indicates the configuration of the toolset from the user.
+    config: Optional[dict[str, Any]] = None
     is_default: bool = False
     llm_instructions: Optional[str] = None
 
@@ -454,6 +455,16 @@ class Toolset(BaseModel):
     def get_example_config(self) -> Dict[str, Any]:
         return {}
 
+    @abstractmethod
+    def init_config(self, config: Optional[dict[str, Any]]):
+        """
+        Initialize the toolset typed configuration from the provided config.
+
+        Normally, init_config is called after prerequisites are checked and the config is not None.
+        It's possible to initialize the typed configuration when the config is None like when the configs are read from environment variables
+        """
+        pass
+
     def _load_llm_instructions(self, jinja_template: str):
         tool_names = [t.name for t in self.tools]
         self.llm_instructions = load_and_render_prompt(
@@ -472,6 +483,9 @@ class YAMLToolset(Toolset):
 
     def get_example_config(self) -> Dict[str, Any]:
         return {}
+
+    def init_config(self, config: Optional[dict[str, Any]]):
+        pass
 
 
 class ToolsetYamlFromConfig(Toolset):
@@ -505,6 +519,9 @@ class ToolsetYamlFromConfig(Toolset):
 
     def get_example_config(self) -> Dict[str, Any]:
         return {}
+
+    def init_config(self, config: Optional[dict[str, Any]]):
+        pass
 
 
 class ToolsetDBModel(BaseModel):

@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Optional, Tuple
 
 from holmes.core.tools import (
@@ -6,9 +7,7 @@ from holmes.core.tools import (
     ToolResultStatus,
     ToolsetTag,
 )
-from holmes.plugins.toolsets.consts import (
-    TOOLSET_CONFIG_MISSING_ERROR,
-)
+from holmes.plugins.toolsets.consts import TOOLSET_CONFIG_MISSING_ERROR
 from holmes.plugins.toolsets.coralogix.api import (
     build_query_string,
     get_start_end,
@@ -28,6 +27,8 @@ from holmes.plugins.toolsets.logging_utils.logging_api import (
 
 
 class CoralogixLogsToolset(BasePodLoggingToolset):
+    typed_config: Optional[CoralogixConfig] = None
+
     def __init__(self):
         super().__init__(
             name="coralogix/logs",
@@ -51,33 +52,37 @@ class CoralogixLogsToolset(BasePodLoggingToolset):
         if not config:
             return False, TOOLSET_CONFIG_MISSING_ERROR
 
-        self.config = CoralogixConfig(**config)
+        self.init_config(config)
+        if not self.typed_config:
+            return False, "Coralogix toolset is misconfigured."
 
-        if not self.config.api_key:
+        if not self.typed_config.api_key:
             return False, "Missing configuration field 'api_key'"
 
-        return health_check(domain=self.config.domain, api_key=self.config.api_key)
+        return health_check(
+            domain=self.typed_config.domain, api_key=self.typed_config.api_key
+        )
 
-    @property
-    def coralogix_config(self) -> Optional[CoralogixConfig]:
-        return self.config
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if not config:
+            logging.error("Coralogix config not provided")
+            return
+        self.typed_config = CoralogixConfig(**config)
 
     def fetch_pod_logs(self, params: FetchPodLogsParams) -> StructuredToolResult:
-        if not self.coralogix_config:
+        if not self.typed_config:
             return StructuredToolResult(
                 status=ToolResultStatus.ERROR,
-                error=f"The {self.name} toolset is not configured",
+                error=TOOLSET_CONFIG_MISSING_ERROR,
                 params=params.model_dump(),
             )
 
-        logs_data = query_logs_for_all_tiers(
-            config=self.coralogix_config, params=params
-        )
+        logs_data = query_logs_for_all_tiers(config=self.typed_config, params=params)
         (start, end) = get_start_end(params=params)
-        query_string = build_query_string(config=self.coralogix_config, params=params)
+        query_string = build_query_string(config=self.typed_config, params=params)
 
         url = build_coralogix_link_to_logs(
-            config=self.coralogix_config,
+            config=self.typed_config,
             lucene_query=query_string,
             start=start,
             end=end,

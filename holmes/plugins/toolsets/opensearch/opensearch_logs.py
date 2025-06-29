@@ -1,9 +1,9 @@
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
+from urllib.parse import urljoin
 
 import requests  # type: ignore
 from requests import RequestException  # type: ignore
-from urllib.parse import urljoin
 
 from holmes.core.tools import (
     CallablePrerequisite,
@@ -18,6 +18,7 @@ from holmes.plugins.toolsets.logging_utils.logging_api import (
     process_time_parameters,
 )
 from holmes.plugins.toolsets.opensearch.opensearch_utils import (
+    BaseOpenSearchConfig,
     OpenSearchLoggingConfig,
     add_auth_header,
     build_query,
@@ -30,6 +31,8 @@ LOGS_FIELDS_CACHE_KEY = "cached_logs_fields"
 
 class OpenSearchLogsToolset(BasePodLoggingToolset):
     """Implementation of the unified logging API for OpenSearch logs"""
+
+    typed_config: Optional[OpenSearchLoggingConfig] = None
 
     def __init__(self):
         super().__init__(
@@ -58,16 +61,18 @@ class OpenSearchLogsToolset(BasePodLoggingToolset):
         if not config:
             return False, "Missing OpenSearch configuration. Check your config."
 
-        self.config = OpenSearchLoggingConfig(**config)
+        self.init_config(config)
 
-        return opensearch_health_check(self.config)
+        return opensearch_health_check(cast(BaseOpenSearchConfig, self.typed_config))
 
-    @property
-    def opensearch_config(self) -> Optional[OpenSearchLoggingConfig]:
-        return self.config
+    def init_config(self, config: Optional[dict[str, Any]]):
+        if not config:
+            logging.error("OpenSearch config not provided")
+            return
+        self.typed_config = OpenSearchLoggingConfig(**config)
 
     def fetch_pod_logs(self, params: FetchPodLogsParams) -> StructuredToolResult:
-        if not self.opensearch_config:
+        if not self.typed_config:
             return StructuredToolResult(
                 status=ToolResultStatus.ERROR,
                 error="Missing OpenSearch configuration",
@@ -83,7 +88,7 @@ class OpenSearchLogsToolset(BasePodLoggingToolset):
                 )
 
             query = build_query(
-                config=self.opensearch_config,
+                config=self.typed_config,
                 namespace=params.namespace,
                 pod_name=params.pod_name,
                 start_time=start_time,
@@ -93,13 +98,11 @@ class OpenSearchLogsToolset(BasePodLoggingToolset):
             )
 
             headers = {"Content-Type": "application/json"}
-            headers.update(
-                add_auth_header(self.opensearch_config.opensearch_auth_header)
-            )
+            headers.update(add_auth_header(self.typed_config.opensearch_auth_header))
 
             url = urljoin(
-                self.opensearch_config.opensearch_url,
-                f"/{self.opensearch_config.index_pattern}/_search",
+                self.typed_config.opensearch_url,
+                f"/{self.typed_config.index_pattern}/_search",
             )
             logs_response = requests.post(
                 url=url,
@@ -113,7 +116,7 @@ class OpenSearchLogsToolset(BasePodLoggingToolset):
                 response = logs_response.json()
                 logs = format_logs(
                     logs=response.get("hits", {}).get("hits", []),
-                    config=self.opensearch_config,
+                    config=self.typed_config,
                 )
                 return StructuredToolResult(
                     status=ToolResultStatus.SUCCESS,

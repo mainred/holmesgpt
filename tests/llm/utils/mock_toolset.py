@@ -3,10 +3,11 @@ import json
 import logging
 import os
 import re
+import urllib
 from typing import Any, Dict, List, Optional
 
+from braintrust import Span, SpanTypeAttribute
 from pydantic import BaseModel
-import urllib
 
 from holmes.core.tools import (
     StructuredToolResult,
@@ -18,7 +19,6 @@ from holmes.core.tools import (
 )
 from holmes.plugins.toolsets import load_builtin_toolsets, load_toolsets_from_file
 from tests.llm.utils.constants import AUTO_GENERATED_FILE_SUFFIX
-from braintrust import Span, SpanTypeAttribute
 
 ansi_escape = re.compile(r"\x1B\[([0-9]{1,3}(;[0-9]{1,2};?)?)?[mGK]")
 
@@ -228,6 +228,9 @@ class MockToolset(Toolset):
 
     def get_example_config(self) -> Dict[str, Any]:
         return {}
+
+    def init_config(self, config: Optional[dict[str, Any]]):
+        pass
 
     def fetch_pod_logs(self):
         # Temporary placeholder to ensure the mocked version of logging toolset is considered a 'new' version

@@ -1,11 +1,11 @@
 import json
 import logging
 import os
-from typing import Optional, Any, cast
+from typing import Any, Optional
 from urllib.parse import urljoin
 
-from pydantic import BaseModel
 import requests  # type: ignore
+from pydantic import BaseModel
 
 from holmes.core.tools import Toolset
 
@@ -147,6 +147,8 @@ def build_query(
 
 
 class BaseOpenSearchToolset(Toolset):
+    typed_config: Optional[BaseOpenSearchConfig] = None
+
     def get_example_config(self) -> dict[str, Any]:
         example_config = BaseOpenSearchConfig(
             opensearch_url="YOUR OPENSEARCH LOGS URL",
@@ -157,22 +159,24 @@ class BaseOpenSearchToolset(Toolset):
 
     def prerequisites_callable(self, config: dict[str, Any]) -> tuple[bool, str]:
         env_url = os.environ.get("OPENSEARCH_LOGS_URL", None)
-        env_index_pattern = os.environ.get("OPENSEARCH_LOGS_INDEX_NAME", "*")
         if not config and not env_url:
             return False, "Missing opensearch traces URL. Check your config"
-        elif not config and env_url:
-            self.config = BaseOpenSearchConfig(
+
+        self.init_config(config)
+        if not self.typed_config:
+            return False, "Missing opensearch traces configuration"
+        return opensearch_health_check(self.typed_config)
+
+    def init_config(self, config: Optional[dict[str, Any]]):
+        env_url = os.environ.get("OPENSEARCH_LOGS_URL", None)
+        env_index_pattern = os.environ.get("OPENSEARCH_LOGS_INDEX_NAME", "*")
+        if not config and env_url:
+            self.typed_config = BaseOpenSearchConfig(
                 opensearch_url=env_url,
                 index_pattern=env_index_pattern,
                 opensearch_auth_header=os.environ.get(
                     "OPENSEARCH_LOGS_AUTH_HEADER", None
                 ),
             )
-            return opensearch_health_check(self.config)
-        else:
-            self.config = BaseOpenSearchConfig(**config)
-            return opensearch_health_check(self.config)
-
-    @property
-    def opensearch_config(self) -> BaseOpenSearchConfig:
-        return cast(BaseOpenSearchConfig, self.config)
+        elif config:
+            self.typed_config = BaseOpenSearchConfig(**config)
