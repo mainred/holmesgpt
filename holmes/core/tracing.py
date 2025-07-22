@@ -1,7 +1,7 @@
-import os
 import logging
-from typing import Optional, Any, Union
+import os
 from enum import Enum
+from typing import Any, Optional, Union
 
 try:
     import braintrust
